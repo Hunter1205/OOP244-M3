@@ -1,0 +1,282 @@
+/*namespace ama{
+	Product::Product(char type){
+		productType = type;
+		_sku[0] = '\0';
+		units[0] = '\0';
+		names = nullptr;
+		qty = 0;
+		quantityNeeded = 0;
+		prices = 0.0;
+		isTaxed = false;
+	}
+
+	Product::Product(const char* s, const char* n, const char* u, double p, int needed, int q, bool tax){
+		strncpy(_sku, s, max_length_sku);
+		_sku[max_length_sku] = '\0';
+		strncpy(units, u, max_length_unit);
+		units[max_length_unit] = '\0';
+		names = nullptr;
+		name(n);
+		qty = q;
+		quantityNeeded = needed;
+		prices = p;
+		isTaxed = tax;
+	}
+
+	Product::~Product(){
+		delete[] names;
+		names = nullptr;
+	}
+
+	Product::Product(const Product& p){
+		*this = p;
+	}
+
+	Product& Product::operator=(const Product& P){
+		if(this != &P){
+			delete[] names;
+			names = nullptr;
+			name(P.names);
+			strncpy(_sku, P._sku, max_length_sku);
+			strncpy(units, P.units, max_length_unit);
+			prices = P.prices;
+			isTaxed = P.isTaxed;
+			qty = P.qty;
+			quantityNeeded = P.quantityNeeded;
+			if(!P.isClear()){
+				error.message(P.error.message());
+			}
+		}
+		return *this;
+	}
+
+	void Product::name(const char* n){
+		delete[] names;
+		if(n != nullptr){
+			names = new char[strlen(n) + 1];
+			strcpy(names, n);
+		}else{
+			names = nullptr;
+		}
+	}
+
+	void Product::message(const char* pText){
+		error.message(pText);
+	}
+
+	double Product::total_cost() const{
+		double total;
+		if(isTaxed){
+			total = prices * (1 + tax_rate);
+		}else{
+			total = prices;
+		}
+		return static_cast<double>(qty * total);
+	}
+
+	int Product::qtyAvailable() const{
+		return qty;
+	}
+
+	int Product::qtyNeeded() const{
+		return quantityNeeded;
+	}
+
+	bool Product::isEmpty() const{
+		return names == nullptr;
+	}
+
+	bool Product::isClear() const{
+		//Returns true/false if the ErrorState contains error message
+		return (error.message() == nullptr)? true : false;
+	}
+
+	bool Product::operator==(const char* sku) const{
+		bool equal = false;
+		if(strcmp(_sku, sku) == 0){
+			equal = true;
+		}
+		return equal;
+	}
+
+	int Product::operator+=(int cnt){
+		//If received int is positive-valued
+		//add it to the quantity on hand
+		return cnt > 0 ? qty += cnt : qty;
+	}
+
+	bool Product::operator>(const char* sku) const{
+		return (strcmp(_sku, sku) > 0) ? true : false;
+	}
+
+	bool Product::operator>(const Product& p) const{
+		return (strcmp(names, p.names) > 0) ? true : false;
+	}
+
+	std::ostream& Product::write(std::ostream& out, int writeMode) const{
+		char hold;
+		if(isClear()){
+			if(!isEmpty()){
+				if(writeMode == write_table){
+					out << " ";
+					out.width(max_length_sku);
+					out.setf(ios::right);
+					out << _sku << " | ";
+					out.unsetf(ios::right);
+					out.setf(ios::left);
+					hold = names[13];
+					names[13] = '\0';
+					out << names << "..." << " | ";
+					names[13] = hold;
+					out.unsetf(ios::left);
+					out.width(10);
+					out.setf(ios::left);
+					out << units << " | ";
+					out.unsetf(ios::left);
+					out.width(7);
+					out.setf(ios::right);
+					out << std::fixed;
+					out.precision(2);
+					out << prices << " | ";
+					out.unsetf(ios::right);
+					out.width(3);
+					out.setf(ios::right);
+					out << (isTaxed ? "yes" : "no") << " | ";
+					out.unsetf(ios::right);
+					out.width(6);
+					out.setf(ios::right);
+					out << qty << " | ";
+					out.unsetf(ios::right);
+					out.width(6);
+					out.setf(ios::right);
+					out << quantityNeeded << " |";
+				}else if(writeMode == write_human){
+					out.width(max_length_label);
+					out.setf(ios::right); 
+					out << "Sku: " << _sku << endl;
+					out.width(max_length_label);
+					out.setf(ios::right);
+					out << "Name: " << names << endl;
+					out.width(max_length_label);
+					out.setf(ios::right);
+					out.setf(ios::fixed);
+					out.precision(2);
+					out <<"Price: " << prices << endl;
+					if(isTaxed){
+						out.width(max_length_label);
+						out.setf(ios::right);
+						out.setf(ios::fixed);
+						out.precision(2);
+						out << "Price after Tax: " << prices * (1 + tax_rate) << endl;
+					}else{
+						out.width(max_length_label);
+						out.setf(ios::right);
+						out.setf(ios::fixed);
+						out.precision(2);
+						out << "Price after Tax: " << prices << endl;
+					}
+					out.width(max_length_label);
+					out.setf(ios::right);
+					out << "Quantity Available: " << qty << " " << units << endl;
+					out.width(max_length_label);
+					out.setf(ios::right);
+					out << "Quantity Needed: " << quantityNeeded << " " << units << endl;
+				}else if(writeMode == write_condensed){
+					out << productType << "," << _sku << ","
+						<< names << "," << units << ","
+						<< prices << "," << isTaxed << ","
+						<< qty << "," << quantityNeeded;
+				}
+			}
+		}
+		return out;
+	}
+
+	std::istream& Product::read(std::istream& in, bool interractive){
+		char sku[max_length_sku + 1];
+		char unit[max_length_unit + 1];
+		char namess[max_length_name +1];
+		double price;
+		char taxed;
+		bool isTax;
+		int quantity;
+		int qtyNeeded;
+		ErrorState errorMessage;
+		
+		if(!in.fail()){
+			if(interractive){
+				cout << " Sku: ";
+				cin.getline(sku, max_length_sku);
+
+				cout << " Name (no spaces): ";
+				cin.getline(namess, 20);
+
+				cout << " Unit: ";
+				cin.getline(unit, max_length_unit);
+
+				cout << " Taxed? (y/n): ";
+				in >> taxed;
+				if(taxed == 'Y' || taxed == 'y'){
+					isTax = true;
+					in.clear();
+				}else{
+					if(taxed == 'N' || taxed == 'n'){
+						isTax = false;
+						in.clear();
+					}else{
+						in.setstate(std::ios::failbit);
+						message("Only (Y)es or (N)o are acceptable");
+						return in;
+					}
+				}
+
+				cout << " Price: ";
+				if(in >> price){
+					in.clear();
+				}else{
+					in.setstate(std::ios::failbit);
+					message("Invalid Price Entry");
+					return in;
+				}
+
+				cout << " Quantity on hand: ";
+				if(in >> quantity){
+					in.clear();
+				}else{
+					in.setstate(std::ios::failbit);
+					message("Invalid Quantity Entry");
+					return in;
+				}
+
+				cout << " Quantity needed: ";
+				if(in >> qtyNeeded){
+					in.clear();
+				}else{
+					in.setstate(std::ios::failbit);
+					message("Invalid Quantity Needed Entry");
+					return in;
+				}
+
+				in.clear();
+				cin.ignore(numeric_limits<streamsize>::max(), '\n');
+			}else{
+				in.getline(sku, max_length_sku, ',');
+				in.getline(namess, max_length_name, ',');
+				in.getline(unit, max_length_unit, ',');
+				in >> price;
+				in.ignore();
+				in >> taxed;
+				in.ignore();
+				in >> quantity;
+				in.ignore();
+				in >> qtyNeeded;
+			}
+		}
+
+		if(isClear()){
+			names = nullptr;
+			*this = Product(sku, namess, unit, price, qtyNeeded, quantity, isTax);
+		}
+		return in;
+	}
+}*/
